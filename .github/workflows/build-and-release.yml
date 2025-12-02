@@ -24,8 +24,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
+          submodules: false  # or just remove this line entirely (default is no submodules)
 
+      - name: Pull assets submodule
+        run: git -c submodule."assets".update=checkout submodule update --init assets
+          
       # 2. Install pnpm FIRST (required before setup-node cache: pnpm)
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

@@ -19,18 +19,21 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      # -------------------------
-      # 1. Checkout the repository
-      # -------------------------
+      # 1. Checkout repo (with submodules)
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           submodules: recursive
 
-      # -------------------------
-      # 2. Install Node.js
-      # -------------------------
+      # 2. Install pnpm FIRST (required before setup-node cache: pnpm)
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      # 3. Setup Node.js and enable pnpm cache
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -38,30 +41,15 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
-      # -------------------------
-      # 3. Install pnpm correctly
-      # -------------------------
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-          run_install: false
-
-      # -------------------------
       # 4. Install dependencies
-      # -------------------------
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # -------------------------
-      # 5. Build distributables
-      # -------------------------
-      - name: Build distributables
-        run: pnpm make
+      # 5. Build app (same command that worked in "Build App")
+      - name: Package app
+        run: pnpm run package
 
-      # -------------------------
-      # 6. Upload artifacts
-      # -------------------------
+      # 6. Upload build artifacts
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -70,9 +58,7 @@ jobs:
             out/**
           if-no-files-found: error
 
-      # -------------------------
-      # 7. Create / update release
-      # -------------------------
+      # 7. Create / update GitHub Release when building a tag
       - name: Create or Update GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2

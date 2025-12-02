@@ -1,0 +1,39 @@
+name: Sync from upstream
+
+on:
+  schedule:
+    # Runs every 6 hours; you can tweak the cron later if you want
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream remote and fetch
+        run: |
+          git remote add upstream https://github.com/stoatchat/for-desktop.git || true
+          git fetch upstream --tags
+
+      - name: Merge upstream/main into main
+        run: |
+          git checkout main
+          # This allows merge commits so your URL-change commit can coexist
+          git merge upstream/main --no-edit || {
+            echo "::error::Automatic merge failed. Resolve manually in the repo."
+            exit 1
+          }
+
+      - name: Push updated main and tags back to fork
+        run: |
+          git push origin main
+          git push origin --tags

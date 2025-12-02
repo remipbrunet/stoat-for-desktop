@@ -13,7 +13,7 @@ export async function initDiscordRpc() {
 
     rpc.on("ready", () =>
       rpc.setActivity({
-        state: "stoat.chat",
+        state: "stoat.let-hub.com",
         details: "Chatting with others",
         largeImageKey: "qr",
         // largeImageText: "Communication is critical – use Revolt.",
@@ -21,7 +21,7 @@ export async function initDiscordRpc() {
         buttons: [
           {
             label: "Join Stoat",
-            url: "https://stoat.chat/",
+            url: "https://stoat.let-hub.com/",
           },
         ],
       }),

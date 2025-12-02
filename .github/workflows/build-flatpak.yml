@@ -1,0 +1,81 @@
+name: Build Flatpak
+
+on:
+  # Build on tagged releases (v1.2.3 etc.)
+  push:
+    tags:
+      - "v*"
+  # Manual trigger from Actions tab
+  workflow_dispatch:
+
+jobs:
+  flatpak:
+    name: Build Flatpak (Linux)
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Checkout repo (no submodules yet; we'll pull assets explicitly)
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: false
+
+      # 2) Pull Stoat assets submodule (needed for icons etc.)
+      - name: Pull assets submodule
+        run: |
+          git -c submodule."assets".update=checkout submodule update --init assets
+
+      # 3) Setup pnpm (uses version from package.json `packageManager` field)
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      # 4) Setup Node.js (use same major as other jobs; 22 is fine here)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # 5) Install system dependencies required for flatpak builds
+      - name: Install Flatpak build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            flatpak \
+            flatpak-builder \
+            elfutils \
+            fakeroot \
+            dpkg
+
+      # 6) Install JS dependencies
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 7) Build distributables with Electron Forge (including Flatpak maker)
+      #
+      # This assumes your forge.config.ts is configured with @electron-forge/maker-flatpak.
+      # If not, pnpm make will still succeed, but no .flatpak will be created.
+      - name: Run Electron Forge make (Linux targets)
+        run: pnpm make --platform=linux --arch=x64
+
+      # 8) Upload Flatpak artifact so you can grab it from the Actions run
+      - name: Upload Flatpak artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stoat-desktop-flatpak
+          path: |
+            out/make/flatpak/**/*.flatpak
+          if-no-files-found: error
+
+      # 9) Attach Flatpak to GitHub Release when this was triggered by a tag
+      - name: Attach Flatpak to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/make/flatpak/**/*.flatpak
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
